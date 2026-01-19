@@ -4,6 +4,7 @@ using _1_Application.Services;
 using _2_Domain.Interfaces;
 using _3_Infrastructure.Data;
 using _3_Infrastructure.Repositories;
+using _3_Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +19,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IGalleryRepository, GalleryRepository>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<GalleryService>();
+
 
 // JWT
 var jwtKey = builder.Configuration["Jwt:Key"];
