@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using _1_Application.DTOs;
+using _1_Application.Interfaces;
 using _2_Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +12,12 @@ namespace BackendVue.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
+    private readonly ICloudinaryService  _cloudinaryService;
 
-    public UsersController(IUserRepository userRepository)
+    public UsersController(IUserRepository userRepository,  ICloudinaryService cloudinaryService)
     {
         _userRepository = userRepository;
+        _cloudinaryService = cloudinaryService;
     }
     
     [Authorize]
@@ -26,7 +30,8 @@ public class UsersController : ControllerBase
         {
             u.Id,
             u.Email,
-            role = u.Role.ToString()
+            role = u.Role.ToString(),
+            profileImageUrl = u.ProfileImageUrl
         });
 
         return Ok(result);
@@ -43,7 +48,8 @@ public class UsersController : ControllerBase
         {
             user.Id,
             user.Email,
-            role = user.Role.ToString()
+            role = user.Role.ToString(),
+            profileImageUrl = user.ProfileImageUrl
         });
     }
 
@@ -83,4 +89,79 @@ public class UsersController : ControllerBase
         await _userRepository.DeleteAsync(id);
         return NoContent();
     }
+    
+    //Foto cloudinary
+     [Authorize]
+     [HttpPut("me")]
+     [Consumes("multipart/form-data")]
+     public async Task<IActionResult> UpdateMe([FromForm] UpdateMyProfileDto dto)
+     {
+         var userIdClaim = User.FindFirst("userId")?.Value;
+         if (string.IsNullOrWhiteSpace(userIdClaim)) return Unauthorized();
+     
+         var userId = int.Parse(userIdClaim);
+     
+         var user = await _userRepository.GetByIdAsync(userId);
+         if (user == null) return NotFound();
+     
+         if (!string.IsNullOrWhiteSpace(dto.Email))
+             user.Email = dto.Email;
+     
+         if (!string.IsNullOrWhiteSpace(dto.Password))
+             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+     
+         if (dto.ProfilePhoto != null && dto.ProfilePhoto.Length > 0)
+         {
+             if (!string.IsNullOrWhiteSpace(user.ProfileImagePublicId)) 
+                 await _cloudinaryService.DeleteImageAsync(user.ProfileImagePublicId);
+     
+             await using var stream = dto.ProfilePhoto.OpenReadStream();
+             var upload = await _cloudinaryService.UploadImageAsync(stream, dto.ProfilePhoto.FileName);
+     
+             user.ProfileImageUrl = upload.Url;
+             user.ProfileImagePublicId = upload.PublicId;
+         }
+     
+         await _userRepository.UpdateAsync(user);
+     
+         return Ok(new
+         {
+             user.Id,
+             user.Email,
+             role = user.Role.ToString(),
+             profileImageUrl = user.ProfileImageUrl
+         });
+     }
+     
+     
+     
+     // ADMIN
+     [Authorize(Roles = "Admin")]
+     [HttpPut("{id:int}/photo")]
+     [Consumes("multipart/form-data")]
+     public async Task<IActionResult> AdminUpdatePhoto(int id, [FromForm] UpdateUserPhotoDto dto)
+     {
+         var user = await _userRepository.GetByIdAsync(id);
+         if (user == null) return NotFound();
+
+         if (!string.IsNullOrWhiteSpace(user.ProfileImagePublicId))
+             await _cloudinaryService.DeleteImageAsync(user.ProfileImagePublicId);
+
+         await using var stream = dto.ProfilePhoto.OpenReadStream();
+         var upload = await _cloudinaryService.UploadImageAsync(stream, dto.ProfilePhoto.FileName);
+
+         user.ProfileImageUrl = upload.Url;
+         user.ProfileImagePublicId = upload.PublicId;
+
+         await _userRepository.UpdateAsync(user);
+
+         return Ok(new
+         {
+             user.Id,
+             user.Email,
+             role = user.Role.ToString(),
+             profileImageUrl = user.ProfileImageUrl
+         });
+     }
+
 }

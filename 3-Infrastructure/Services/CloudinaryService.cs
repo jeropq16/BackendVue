@@ -21,7 +21,7 @@ public class CloudinaryService : ICloudinaryService
 
     public async Task<(string Url, string PublicId)> UploadImageAsync(Stream fileStream, string fileName)
     {
-        var uploadParams = new ImageUploadParams
+        var upload = new ImageUploadParams
         {
             File = new FileDescription(fileName, fileStream),
             Folder = "gallery",
@@ -30,7 +30,7 @@ public class CloudinaryService : ICloudinaryService
             Overwrite = false
         };
 
-        var result = await _cloudinary.UploadAsync(uploadParams);
+        var result = await _cloudinary.UploadAsync(upload);
 
         if (result.Error != null)
             throw new Exception(result.Error.Message);
@@ -40,8 +40,8 @@ public class CloudinaryService : ICloudinaryService
 
     public async Task DeleteImageAsync(string publicId)
     {
-        var deletionParams = new DeletionParams(publicId);
-        var result = await _cloudinary.DestroyAsync(deletionParams);
+        var delete = new DeletionParams(publicId);
+        var result = await _cloudinary.DestroyAsync(delete);
 
         if (result.Error != null)
             throw new Exception(result.Error.Message);

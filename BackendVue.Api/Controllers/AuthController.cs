@@ -9,15 +9,17 @@ namespace BackendVue.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController  : ControllerBase
+public class AuthController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public AuthController(IUserRepository userRepository, IJwtService jwtService)
+    public AuthController(IUserRepository userRepository, IJwtService jwtService, ICloudinaryService cloudinaryService)
     {
         _userRepository = userRepository;
         _jwtService = jwtService;
+        _cloudinaryService = cloudinaryService;
     }
 
     [HttpPost("login")]
@@ -54,7 +56,7 @@ public class AuthController  : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = request.Role
         };
-
+        
         await _userRepository.AddAsync(user);
 
         return Ok();
